@@ -1,14 +1,13 @@
-\documentclass[10pt]{article}
+\documentclass[10pt, twoside]{article}
 
 
 \input{br_manual_header.tex}
 
 
 \begin{document}
-\pagestyle{plain} 
-
-	\pagenumbering{roman} 
-	\setcounter{page}{1}
+\pagestyle{front} 
+	
+	\pagenumbering{Alph}
 
 
 \begin{titlepage}
@@ -18,10 +17,14 @@
 	{\Large Bertini\_real}
 
 \vspace{\baselineskip}
-	{\large software for real algebraic sets}
-	
+	{\large Software for Real Algebraic Sets}
+
+
+
+	{\large A Comprehensive Guide}	
+
 	\vspace{3cm}
-	\includegraphics[width=0.75\linewidth]{testlogo1}
+	\includegraphics[width=0.75\linewidth]{whitney_ss.png}
 	\end{center}
 
 	\vfill
@@ -47,54 +50,53 @@
 
 
 
+\clearpage
 
-	\tableofcontents
-	\eject
-	\pagenumbering{arabic} 
+\thispagestyle{empty}
+
+\quad 
+\vspace{2in}
+
+\begin{center}
+\includegraphics[width=0.75\linewidth]{chmutov_2}
+
+Brought to you by the power of numerical algebraic geometry
+\end{center}
+
+
+\vfill
+
+\clearpage
+
+
+\pagenumbering{roman} 
 	\setcounter{page}{1}
-	\eject
+\begingroup\setlength{\parskip}{0pt plus .1pt}
+	\tableofcontents
+	\newpage
+\endgroup
 
 
 
-
-
-
-
+\pagestyle{main} 
+\pagenumbering{arabic} 
+	\setcounter{page}{1}
+\setlength{\parskip}{1em plus 0.1em minus 0.1em} %custom spacing between paragraphs 
 \input{introduction}
-
-
-
 
 \input{quick_summary}
 
-
-
-
-
 \input{input_files}
-
-
 
 \input{running_bertini}
 
-
 \input{running_bertini_real}
-
-
 
 \input{running_sampler}
 
-
-
 \input{visualization}
 
-
-
-
-
 \input{troubleshooting}
-
-
 
 \input{examples}
 
@@ -106,9 +108,6 @@
 
 
 
-\appendix
-
-
 %%%%%%%%%%%%%%%%%%
 %
 %  APPENDICES
@@ -116,19 +115,30 @@
 %%%%%%%%%%%%%%%%%%
 
 
-\input{install}
+\appendix
 
+
+\input{the_algorithm}
+
+\input{install}
 
 \input{output_files}
 
 
 \newpage
+
+\begingroup\setlength{\parskip}{0pt plus .1pt}
 \setglossarystyle{altlist}
 \printglossary[type=\acronymtype]
-
-
+\endgroup
 
 
 \printindex
 
+\vspace{1in}
+\begin{center}
+\includegraphics[height = 4in]{octdong_6}
+
+thanks for reading!
+\end{center}
 \end{document}

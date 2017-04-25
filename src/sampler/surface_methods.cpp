@@ -3,6 +3,8 @@
 #include <boost/math/common_factor.hpp>
 
 
+void WorkerSampleSurface(sampler_configuration & sampler_options, SolverConfiguration & solve_options)
+{}
 
 void Surface::fixed_sampler(VertexSet & V,
 							sampler_configuration & sampler_options,
@@ -35,25 +37,25 @@ void Surface::FixedSampleCurves(VertexSet & V,
 	int target_num_samples = sampler_options.target_num_samples; 
 	
 	std::cout << "critical curve" << std::endl;
-	crit_curve().fixed_sampler(V,sampler_options,solve_options,target_num_samples);
+	crit_curve().FixedSampler(V,sampler_options,solve_options,target_num_samples);
 
 	std::cout << "sphere curve" << std::endl;
-	sphere_curve().fixed_sampler(V,sampler_options,solve_options,target_num_samples);
+	sphere_curve().FixedSampler(V,sampler_options,solve_options,target_num_samples);
 
 	std::cout << "mid slices" << std::endl;
 	for (auto ii=mid_slices_iter_begin(); ii!=mid_slices_iter_end(); ii++) {
-		ii->adaptive_sampler_distance(V,sampler_options,solve_options);
+		ii->AdaptiveDistanceSampler(V,sampler_options,solve_options);
 	}
 	
 	std::cout << "critical slices" << std::endl;
 	for (auto ii=crit_slices_iter_begin(); ii!=crit_slices_iter_end(); ii++) {
-		ii->adaptive_sampler_distance(V,sampler_options,solve_options);
+		ii->AdaptiveDistanceSampler(V,sampler_options,solve_options);
 	}
 	
 	if (num_singular_curves()>0) {
 		std::cout << "singular curves" << std::endl;
 		for (auto iter = singular_curves_iter_begin(); iter!= singular_curves_iter_end(); ++iter) {
-			iter->second.fixed_sampler(V,sampler_options,solve_options,target_num_samples);
+			iter->second.FixedSampler(V,sampler_options,solve_options,target_num_samples);
 		}
 	}
 }
@@ -514,13 +516,21 @@ void Surface::AdaptiveSampler(VertexSet & V,
 	for (unsigned int ii=0; ii<num_faces(); ii++) {
 		
 		if (faces_[ii].is_degenerate() || faces_[ii].is_malformed())
-			continue;
-		
-		std::cout << "Face " << ii << " of " << num_faces() << std::endl;
-		if (sampler_options.verbose_level()>=1)
-			std::cout << faces_[ii];
+			DegenerateSampleFace(ii,V,sampler_options, solve_options);
+		else
+		{
+			std::cout << "Face " << ii << " of " << num_faces() << std::endl;
+			if (sampler_options.verbose_level()>=1)
+				std::cout << faces_[ii];
 
-		AdaptiveSampleFace(ii, V, sampler_options, solve_options, num_ribs_between_crits);
+			try{
+				AdaptiveSampleFace(ii, V, sampler_options, solve_options, num_ribs_between_crits);
+			}
+			catch (std::exception & e)
+			{
+				std::cout << "bailed out on face " << ii << ".  reason: " << e.what() << std::endl;
+			}
+		}
 	} // re: for ii, that is for the faces
 	
 	return;
@@ -546,12 +556,12 @@ std::vector<int> Surface::AdaptiveSampleCurves(VertexSet & V,
 
 	std::cout << "sampling mid slices" << std::endl;
 	for (auto ii=mid_slices_iter_begin(); ii!=mid_slices_iter_end(); ii++) {
-		ii->adaptive_sampler_distance(V,sampler_options,solve_options);
+		ii->AdaptiveDistanceSampler(V,sampler_options,solve_options);
 	}
 	
 	std::cout << "sampling critical slices" << std::endl;
 	for (auto ii=crit_slices_iter_begin(); ii!=crit_slices_iter_end(); ii++) {
-		ii->adaptive_sampler_distance(V,sampler_options,solve_options);
+		ii->AdaptiveDistanceSampler(V,sampler_options,solve_options);
 	}
 	
 	if (num_singular_curves()>0) {
@@ -818,16 +828,17 @@ void Surface::AdaptiveSampleFace(int face_index, VertexSet & V, sampler_configur
 	
 	auto top_edge_index    = top->   nondegenerate_edge_w_midpt(current_midslice.get_edge(mid_edge).right());
 	auto bottom_edge_index = bottom->nondegenerate_edge_w_midpt(current_midslice.get_edge(mid_edge).left());
-	// auto b_edge = bottom->get_edge(bottom_edge_index);
 
 	if (bottom_edge_index<0)
 	{
 		std::cout << color::red() << "unable to find bottom edge w midpoint index " << current_midslice.get_edge(mid_edge).left() << color::console_default() << std::endl;
+		throw std::runtime_error("bad bottom index");
 	}
 
 	if (top_edge_index<0)
 	{
-		std::cout << color::red() << "unable to find bottom edge w midpoint index " << current_midslice.get_edge(mid_edge).right() << color::console_default() << std::endl;
+		std::cout << color::red() << "unable to find top edge w midpoint index " << current_midslice.get_edge(mid_edge).right() << color::console_default() << std::endl;
+		throw std::runtime_error("bad top index");
 	}
 
 
@@ -841,20 +852,26 @@ void Surface::AdaptiveSampleFace(int face_index, VertexSet & V, sampler_configur
 	div_mp(interval_width,interval_width,num_intervals);
 	
 
+	int cycle_num_l, cycle_num_r;
 
-	auto top_left_cycle_num = top->GetMetadata(top_edge_index).CycleNumLeft();
-	auto bottom_left_cycle_num = bottom->GetMetadata(bottom_edge_index).CycleNumLeft();
+	if (sampler_options.use_uniform_cycle_num)
+	{
+		cycle_num_l = sampler_options.cycle_num;
+		cycle_num_r = sampler_options.cycle_num;
+	}
+	else
+	{
+		auto top_left_cycle_num = top->GetMetadata(top_edge_index).CycleNumLeft();
+		auto bottom_left_cycle_num = bottom->GetMetadata(bottom_edge_index).CycleNumLeft();
 
-	auto top_right_cycle_num = top->GetMetadata(top_edge_index).CycleNumRight();
-	auto bottom_right_cycle_num = bottom->GetMetadata(bottom_edge_index).CycleNumRight();
+		auto top_right_cycle_num = top->GetMetadata(top_edge_index).CycleNumRight();
+		auto bottom_right_cycle_num = bottom->GetMetadata(bottom_edge_index).CycleNumRight();
 
-	// auto cycle_num_l = boost::math::lcm(top_left_cycle_num, bottom_left_cycle_num);
-	// auto cycle_num_r = boost::math::lcm(top_right_cycle_num, bottom_right_cycle_num);
+		cycle_num_l = boost::math::lcm(top_left_cycle_num, bottom_left_cycle_num);
+		cycle_num_r = boost::math::lcm(top_right_cycle_num, bottom_right_cycle_num);
+	}
 	
-	auto cycle_num_l = 2;
-	auto cycle_num_r = 2;
 	// pi_out + (pi_mid - pi_out) * (1-p)^cycle_num;
-
 	vec_mp u_proj_values;  init_vec_mp(u_proj_values,num_ribs-1); u_proj_values->size = num_ribs-1;
 	set_zero_mp(&u_proj_values->coord[0]);
 	for (int ii=1; ii<num_ribs-1; ++ii)
@@ -1045,7 +1062,6 @@ void Surface::AdaptiveSampleFace(int face_index, VertexSet & V, sampler_configur
 					{
 						std::cout << color::red() << "got non-real solution sample... something strange going on!\n\nnot refining this interval any more..." << color::console_default() << '\n';
 						refine_flags_next.push_back(false);
-						mypause();
 						continue;
 						
 					}
@@ -1136,7 +1152,11 @@ void Surface::AdaptiveSampleFace(int face_index, VertexSet & V, sampler_configur
 
 
 
-
+void Surface::DegenerateSampleFace(int face_index, VertexSet & V, sampler_configuration & sampler_options,
+										SolverConfiguration & solve_options)
+{
+	samples_.push_back(std::vector< Triangle >(0)); 
+}
 
 
 ////////////////////////
